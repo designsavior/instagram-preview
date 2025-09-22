@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Instagram Preview – Working 4-Image Slider</title>
+<style>
+  :root{--bg:#fafafa;--card:#fff;--text:#262626;--border:#dbdbdb;--muted:#8e8e8e}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;display:grid;place-items:center;min-height:100vh;padding:16px}
+  .ig{width:min(620px,100%);background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 10px 24px rgba(0,0,0,.05)}
+  .head{display:flex;gap:10px;align-items:center;padding:12px 14px}
+  .avatar{width:32px;height:32px;border-radius:50%;background:#ddd}
+  .name{font-weight:600}.dots{position:absolute;left:0;right:0;display:flex;justify-content:center;z-index:5} .nav{position:absolute;left:0;right:0; justify-content:center;z-index:5; text-align: center;} 
+  /* Slider area */
+  .slider{position:relative;width:100%;aspect-ratio:4/5;background:#000;overflow:hidden}
+  .slider input{position:absolute;opacity:0}
+  .track{display:flex;height:100%;width:400%;transition:transform .45s ease}
+  .panel{width:25%;height:100%}
+  .panel img{width:100%;height:100%;object-fit:cover;display:block}
+  /* Translate by checked radio */
+  #s1:checked ~ .track{transform:translateX(0)}
+  #s2:checked ~ .track{transform:translateX(-25%)}
+  #s3:checked ~ .track{transform:translateX(-50%)}
+  #s4:checked ~ .track{transform:translateX(-75%)}
+  /* Dots */
+  .dots{bottom:10px;gap:6px}
+  .dot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.55);cursor:pointer}
+  #s1:checked ~ .dots .d1,#s2:checked ~ .dots .d2,#s3:checked ~ .dots .d3,#s4:checked ~ .dots .d4{background:#fff;width:5px}
+  /* Arrows: show per state */
+  .nav{inset:auto 0;bottom:50%;transform:translateY(50%);pointer-events:none}
+  .pair{display:none;gap:8px}
+  .btn{width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.35);display:grid;place-items:center;pointer-events:auto;cursor:pointer}
+  .btn svg{width:18px;height:18px;fill:#fff}
+  .ghost{width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.12);pointer-events:none}
+  /* Which pair to show */
+  #s1:checked ~ .nav .pair1{display:flex; justify-content: space-between}
+  #s2:checked ~ .nav .pair2{display:flex; justify-content: space-between}
+  #s3:checked ~ .nav .pair3{display:flex; justify-content: space-between}
+  #s4:checked ~ .nav .pair4{display:flex; justify-content: space-between}
+  /* Footer */
+  .cap{padding:10px 12px 14px}.time{font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase}
+</style>
+</head>
+<body>
+  <div class="ig">
+    <div class="head">
+      <div class="avatar" aria-hidden="true"></div>
+      <div class="name">umbra_design</div>
+    </div>
+
+    <div class="slider">
+      <!-- radios -->
+      <input type="radio" name="s" id="s1" checked>
+      <input type="radio" name="s" id="s2">
+      <input type="radio" name="s" id="s3">
+      <input type="radio" name="s" id="s4">
+
+      <!-- images -->
+      <div class="track">
+        <div class="panel"><img src="Images/slide1.jpg" alt=""></div>
+        <div class="panel"><img src="Images/slide2.jpg" alt=""></div>
+        <div class="panel"><img src="Images/slide1.jpg" alt=""></div>
+        <div class="panel"><img src="Images/slide1.jpg" alt=""></div>
+      </div>
+
+      <!-- arrows (labels target the correct slide) -->
+      <div class="nav">
+        <!-- s1 state: prev disabled, next -> s2 -->
+        <div class="pair pair1">
+          <div class="ghost" aria-hidden="true"></div>
+          <label class="btn" for="s2" title="Next">
+            <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+          </label>
+        </div>
+        <!-- s2 state: prev -> s1, next -> s3 -->
+        <div class="pair pair2">
+          <label class="btn" for="s1" title="Previous">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          </label>
+          <label class="btn" for="s3" title="Next">
+            <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+          </label>
+        </div>
+        <!-- s3 state: prev -> s2, next -> s4 -->
+        <div class="pair pair3">
+          <label class="btn" for="s2" title="Previous">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          </label>
+          <label class="btn" for="s4" title="Next">
+            <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+          </label>
+        </div>
+        <!-- s4 state: prev -> s3, next disabled -->
+        <div class="pair pair4">
+          <label class="btn" for="s3" title="Previous">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          </label>
+          <div class="ghost" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <!-- dots -->
+      <div class="dots" aria-label="Slide indicators">
+        <label class="dot d1" for="s1" title="1"></label>
+        <label class="dot d2" for="s2" title="2"></label>
+        <label class="dot d3" for="s3" title="3"></label>
+        <label class="dot d4" for="s4" title="4"></label>
+      </div>
+    </div>
+
+    <div class="cap">
+      <strong>instagram</strong> Style meets function — organize beautifully with the Bellwood 3-Tier Shelf. #HomeDecor #UmbraDesign
+      <div class="time">JUST NOW</div>
+    </div>
+  </div>
+</body>
+</html>
