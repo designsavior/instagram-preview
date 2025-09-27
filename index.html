@@ -1,118 +1,366 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Instagram Preview – Working 4-Image Slider</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Instagram Story Slider</title>
 <style>
-  :root{--bg:#fafafa;--card:#fff;--text:#262626;--border:#dbdbdb;--muted:#8e8e8e}
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;display:grid;place-items:center;min-height:100vh;padding:16px}
-  .ig{width:min(620px,100%);background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 10px 24px rgba(0,0,0,.05)}
-  .head{display:flex;gap:10px;align-items:center;padding:12px 14px}
-  .avatar{width:32px;height:32px;border-radius:50%;background:#ddd}
-  .name{font-weight:600}.dots{position:absolute;left:0;right:0;display:flex;justify-content:center;z-index:5} .nav{position:absolute;left:0;right:0; justify-content:center;z-index:5; text-align: center;} 
-  /* Slider area */
-  .slider{position:relative;width:100%;aspect-ratio:4/5;background:#000;overflow:hidden}
-  .slider input{position:absolute;opacity:0}
-  .track{display:flex;height:100%;width:400%;transition:transform .45s ease}
-  .panel{width:25%;height:100%}
-  .panel img{width:100%;height:100%;object-fit:cover;display:block}
-  /* Translate by checked radio */
-  #s1:checked ~ .track{transform:translateX(0)}
-  #s2:checked ~ .track{transform:translateX(-25%)}
-  #s3:checked ~ .track{transform:translateX(-50%)}
-  #s4:checked ~ .track{transform:translateX(-75%)}
-  /* Dots */
-  .dots{bottom:10px;gap:6px}
-  .dot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.55);cursor:pointer}
-  #s1:checked ~ .dots .d1,#s2:checked ~ .dots .d2,#s3:checked ~ .dots .d3,#s4:checked ~ .dots .d4{background:#fff;width:5px}
-  /* Arrows: show per state */
-  .nav{inset:auto 0;bottom:50%;transform:translateY(50%);pointer-events:none}
-  .pair{display:none;gap:8px}
-  .btn{width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.35);display:grid;place-items:center;pointer-events:auto;cursor:pointer}
-  .btn svg{width:18px;height:18px;fill:#fff}
-  .ghost{width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.12);pointer-events:none}
-  /* Which pair to show */
-  #s1:checked ~ .nav .pair1{display:flex; justify-content: space-between}
-  #s2:checked ~ .nav .pair2{display:flex; justify-content: space-between}
-  #s3:checked ~ .nav .pair3{display:flex; justify-content: space-between}
-  #s4:checked ~ .nav .pair4{display:flex; justify-content: space-between}
-  /* Footer */
-  .cap{padding:10px 12px 14px}.time{font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase}
+  :root{
+    --story-width: min(420px, 100vw);
+    --story-ar: 9/16;
+    --bar-height: 4px;
+    --bar-gap: 6px;
+    --bar-bg: rgba(255,255,255,.35);
+    --bar-fg: white;
+    --ui-bg: rgba(0,0,0,.35);
+    --ui-fg: #fff;
+    --progress-duration: 5000ms; /* per story */
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background:#0b0b0b; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #fff; }
+
+  .wrap {
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  .story-frame {
+    position: relative;
+    width: var(--story-width);
+    aspect-ratio: var(--story-ar);
+    background: #000;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Progress bars */
+  .progress {
+    position: absolute; inset: 10px 10px auto 10px;
+    display: grid; grid-auto-flow: column; gap: var(--bar-gap);
+    z-index: 20;
+  }
+  .progress .bar {
+    height: var(--bar-height);
+    background: var(--bar-bg);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress .bar > i {
+    display: block; height: 100%; width: 0%;
+    background: var(--bar-fg);
+    transition: width linear;
+  }
+  .progress.paused .bar > i { transition: none; }
+
+  /* Slides track */
+  .track {
+    height: 100%; width: 100%;
+    position: relative;
+  }
+  .slide {
+    position: absolute; inset: 0;
+    opacity: 0; transition: opacity .28s ease;
+    display: grid; place-items: center;
+    background:#000;
+  }
+  .slide.active { opacity: 1; }
+
+  /* Media */
+  .slide img, .slide video {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+
+  /* Top UI (avatar/name) */
+  .top-ui {
+    position: absolute; inset: 12px 12px auto 12px;
+    display: flex; align-items: center; gap: 10px;
+    z-index: 15; pointer-events: none;
+  }
+  .badge {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #999; overflow: hidden; border:2px solid rgba(255,255,255,.8);
+  }
+  .badge img { width:100%; height:100%; object-fit: cover; }
+  .meta { font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .meta b { font-weight: 700; }
+  .meta span { color: #ddd; }
+
+  /* Caption bubble */
+  .caption {
+    position: absolute; inset: auto 20px 14px 20px;
+    background: var(--ui-bg); color: var(--ui-fg);
+    padding: 10px 12px; border-radius:50px;
+    font-size: 14px; line-height: 1.35;
+    max-width: 90%;
+    z-index: 16;
+  }
+
+  /* Tap zones */
+  .tap-zones {
+    position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; z-index: 18;
+  }
+  .tap-zones div { height: 100%; }
+
+  /* Prev/Next hint (optional) */
+  .arrows {
+    position: absolute; inset: 0; display:flex; justify-content: space-between; align-items: center; padding: 0 6px; z-index: 17; pointer-events:none;
+  }
+  .arrow {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--ui-bg); color: var(--ui-fg);
+    display:grid; place-items:center; font-weight:900; font-size:18px;
+  }
+
+  /* Pause indicator */
+  .paused-indicator {
+    position: absolute; inset: 0; display: grid; place-items: center; z-index: 30;
+    pointer-events: none; opacity: 0; transition: opacity .15s ease;
+  }
+  .paused .paused-indicator { opacity: 1; }
+  .paused-indicator .pill {
+    background: rgba(0,0,0,.55);
+    color:#fff; padding: 6px 10px; border-radius: 999px; font-size: 12px;
+  }
+
+  /* Accessibility: reduce motion */
+  @media (prefers-reduced-motion: reduce) {
+    .progress .bar > i { transition: none !important; }
+    .slide { transition: none !important; }
+  }
+
+  /* Reset UA styles on figure/slides */
+figure { margin: 0; }
+.slide { margin: 0; padding: 0; }
 </style>
 </head>
 <body>
-  <div class="ig">
-    <div class="head">
-      <div class="avatar" aria-hidden="true"></div>
-      <div class="name">umbra_design</div>
+<div class="wrap">
+  <div class="story-frame" aria-label="Story viewer" role="region">
+    <!-- progress bars will be injected here -->
+    <div class="progress" aria-hidden="true"></div>
+
+    <div class="top-ui">
+      <div class="badge"><img src="index/Umbra_logo.png" alt="Profile avatar"></div>
+      <div class="meta"><b>umbra_design</b> <span>• just now</span></div>
     </div>
 
-    <div class="slider">
-      <!-- radios -->
-      <input type="radio" name="s" id="s1" checked>
-      <input type="radio" name="s" id="s2">
-      <input type="radio" name="s" id="s3">
-      <input type="radio" name="s" id="s4">
+    <div class="track" id="track">
+      <!-- Slide 1 (image) -->
+      <figure class="slide active" data-duration="5000" aria-roledescription="slide" aria-label="1 of 4">
+        <img src="index/Artboard_1.jpg" alt="Workspace vibes" />
+        <figcaption class="caption">Reply to umbra</figcaption>
+      </figure>
 
-      <!-- images -->
-      <div class="track">
-        <div class="panel"><img src="Images/slide1.jpg" alt=""></div>
-        <div class="panel"><img src="Images/slide2.jpg" alt=""></div>
-        <div class="panel"><img src="Images/slide3.jpg" alt=""></div>
-        <div class="panel"><img src="Images/slide4.jpg" alt=""></div>
-      </div>
+      <!-- Slide 2 (video demo) -->
+      <figure class="slide" data-duration="7000" aria-roledescription="slide" aria-label="2 of 4" data-type="video">
+        <img playsinline muted preload="metadata" src="index/Storie_2.jpg"></img>
+        <figcaption class="caption">Reply to umbra</figcaption>
+      </figure>
 
-      <!-- arrows (labels target the correct slide) -->
-      <div class="nav">
-        <!-- s1 state: prev disabled, next -> s2 -->
-        <div class="pair pair1">
-          <div class="ghost" aria-hidden="true"></div>
-          <label class="btn" for="s2" title="Next">
-            <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
-          </label>
-        </div>
-        <!-- s2 state: prev -> s1, next -> s3 -->
-        <div class="pair pair2">
-          <label class="btn" for="s1" title="Previous">
-            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-          </label>
-          <label class="btn" for="s3" title="Next">
-            <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
-          </label>
-        </div>
-        <!-- s3 state: prev -> s2, next -> s4 -->
-        <div class="pair pair3">
-          <label class="btn" for="s2" title="Previous">
-            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-          </label>
-          <label class="btn" for="s4" title="Next">
-            <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
-          </label>
-        </div>
-        <!-- s4 state: prev -> s3, next disabled -->
-        <div class="pair pair4">
-          <label class="btn" for="s3" title="Previous">
-            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-          </label>
-          <div class="ghost" aria-hidden="true"></div>
-        </div>
-      </div>
+      <!-- Slide 3 (image) -->
+      <figure class="slide" data-duration="5000" aria-roledescription="slide" aria-label="3 of 4">
+        <img src="index/Storie_3.jpg" alt="Product on desk" />
+        <figcaption class="caption">Reply to umbra</figcaption>
+      </figure>
 
-      <!-- dots -->
-      <div class="dots" aria-label="Slide indicators">
-        <label class="dot d1" for="s1" title="1"></label>
-        <label class="dot d2" for="s2" title="2"></label>
-        <label class="dot d3" for="s3" title="3"></label>
-        <label class="dot d4" for="s4" title="4"></label>
-      </div>
+
+    <!-- tap zones -->
+    <div class="tap-zones" aria-hidden="true">
+      <div id="tap-left"></div>
+      <div id="tap-right"></div>
     </div>
 
-    <div class="cap">
-      <strong>instagram</strong> Style meets function — organize beautifully with the Bellwood 3-Tier Shelf. #HomeDecor #UmbraDesign
-      <div class="time">JUST NOW</div>
+    <!-- arrows hint -->
+    <div class="arrows" aria-hidden="true">
+      <div class="arrow">‹</div>
+      <div class="arrow">›</div>
     </div>
+
+    <!-- paused indicator -->
+    <div class="paused-indicator"><div class="pill">Paused</div></div>
   </div>
+</div>
+
+<script>
+(function(){
+  const frame = document.querySelector('.story-frame');
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const progressEl = document.querySelector('.progress');
+  const tapLeft = document.getElementById('tap-left');
+  const tapRight = document.getElementById('tap-right');
+  let idx = 0;
+  let playing = true;
+  let startTime = 0;
+  let elapsed = 0; // ms consumed on current slide
+  let raf = null;
+
+  // Build progress bars
+  const bars = slides.map((_, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const inner = document.createElement('i');
+    bar.appendChild(inner);
+    progressEl.appendChild(bar);
+    return inner;
+  });
+
+  function setActive(newIdx, {fromTap=false, fromAuto=false} = {}){
+    // clamp
+    if (newIdx < 0) newIdx = 0;
+    if (newIdx >= slides.length) {
+      // loop back to start
+      newIdx = 0;
+      bars.forEach(i => i.style.width = '0%');
+    }
+    // update active class
+    slides.forEach((s,i)=>s.classList.toggle('active', i===newIdx));
+    idx = newIdx;
+    elapsed = 0;
+    startTime = performance.now();
+
+    // media handling
+    slides.forEach((s,i)=>{
+      const v = s.querySelector('video');
+      if (v){
+        if (i===idx){
+          v.currentTime = 0;
+          if (playing) v.play().catch(()=>{});
+        } else {
+          v.pause();
+        }
+      }
+    });
+
+    // update aria labels (optional)
+    slides[idx].setAttribute('aria-label', `${idx+1} of ${slides.length}`);
+
+    // instant-fill previous bars
+    bars.forEach((b,i)=>{
+      if (i < idx) b.style.width = '100%';
+      if (i > idx) b.style.width = '0%';
+    });
+  }
+
+  function durationFor(i){
+    const s = slides[i];
+    const v = s.dataset.type === 'video' ? s.querySelector('video') : null;
+    // If video metadata known, use min(videoLength, data-duration or default)
+    const dataMs = Number(s.dataset.duration || 5000);
+    if (v && !isNaN(v.duration) && v.duration > 0){
+      // cap to 15s typical story limit if very long
+      return Math.min(dataMs, v.duration * 1000);
+    }
+    return dataMs;
+  }
+
+  function tick(now){
+    const d = durationFor(idx);
+    const delta = now - startTime;
+    if (playing) elapsed += delta;
+    startTime = now;
+
+    // progress %
+    const p = Math.max(0, Math.min(1, elapsed / d));
+    bars[idx].style.width = (p*100).toFixed(3) + '%';
+
+    if (p >= 1 && playing){
+      setActive(idx+1, {fromAuto:true});
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  function play(){
+    if (playing) return;
+    playing = true;
+    frame.classList.remove('paused');
+    progressEl.classList.remove('paused');
+    // resume any active video
+    const v = slides[idx].querySelector('video');
+    if (v) v.play().catch(()=>{});
+    startTime = performance.now();
+  }
+  function pause(){
+    if (!playing) return;
+    playing = false;
+    frame.classList.add('paused');
+    progressEl.classList.add('paused');
+    const v = slides[idx].querySelector('video');
+    if (v) v.pause();
+  }
+
+  function prev(){
+    setActive(idx-1, {fromTap:true});
+  }
+  function next(){
+    setActive(idx+1, {fromTap:true});
+  }
+
+  // Tap/Click handling
+  tapLeft.addEventListener('click', prev);
+  tapRight.addEventListener('click', next);
+
+  // Press & hold to pause (mouse)
+  let holdTimer = null;
+  frame.addEventListener('mousedown', (e)=>{ pause(); });
+  frame.addEventListener('mouseup', (e)=>{ play(); });
+  frame.addEventListener('mouseleave', (e)=>{ if(!playing) play(); });
+
+  // Touch: tap zones + hold to pause + swipe
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+  const SWIPE_THRESHOLD = 30; // px
+
+  frame.addEventListener('touchstart', (e)=>{
+    if (e.touches.length !== 1) return;
+    pause();
+    const t = e.touches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY; touchStartTime = performance.now();
+  }, {passive:true});
+
+  frame.addEventListener('touchend', (e)=>{
+    const dt = performance.now() - touchStartTime;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+
+    const isSwipe = Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy);
+    if (isSwipe){
+      if (dx < 0) next(); else prev();
+    } else {
+      // treat as tap: decide left/right by midpoint
+      const rect = frame.getBoundingClientRect();
+      if (t.clientX < rect.left + rect.width/2) prev(); else next();
+    }
+    play();
+  }, {passive:true});
+
+  // Keyboard: ← / →, Space to pause/resume
+  window.addEventListener('keydown', (e)=>{
+    if (e.key === 'ArrowRight') { next(); }
+    else if (e.key === 'ArrowLeft') { prev(); }
+    else if (e.code === 'Space') { e.preventDefault(); playing ? pause() : play(); }
+  });
+
+  // Start loop
+  startTime = performance.now();
+  raf = requestAnimationFrame(tick);
+
+  // Autoplay video when active
+  const observer = new MutationObserver(()=>{
+    const v = slides[idx].querySelector('video');
+    if (v && playing) v.play().catch(()=>{});
+  });
+  observer.observe(document.querySelector('.track'), { attributes:true, subtree:true, attributeFilter:['class'] });
+
+  // Resize fix for mobile address bar changes (no-op but keeps layout fresh)
+  window.addEventListener('resize', ()=>{ /* layout driven by CSS aspect-ratio */ });
+
+})();
+</script>
 </body>
 </html>
-
